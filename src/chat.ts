@@ -8,6 +8,7 @@ import {
     ConnectionStatus,
     getSocket,
     disconnect,
+    isSocketOpen,
 } from "./connection.js";
 
 export function startChat() {
@@ -125,8 +126,7 @@ export function startChat() {
 
     function setupAutoReconnect(callback: () => void) {
         return setInterval(() => {
-            const socket = getSocket();
-            if (!socket || socket.readyState !== WebSocket.OPEN) callback();
+            if (!isSocketOpen()) callback();
         }, 5000);
     }
 
