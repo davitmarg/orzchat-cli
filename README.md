@@ -13,6 +13,12 @@ Install globally via npm:
 npm install -g orzchat-cli
 ```
 
+⚠️ If you are seeing permission issues, you might need to use `sudo`:
+
+```bash
+sudo npm install -g orzchat-cli
+```
+
 ## Usage
 Run the following command to start chatting:
 
