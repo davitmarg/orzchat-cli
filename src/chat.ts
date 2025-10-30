@@ -6,7 +6,6 @@ import {
     setMessageHandler,
     getStatus,
     ConnectionStatus,
-    getSocket,
     disconnect,
     isSocketOpen,
 } from "./connection.js";
