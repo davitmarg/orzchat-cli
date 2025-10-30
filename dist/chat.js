@@ -15,7 +15,9 @@ export function startChat() {
         }
     });
     setupInputHandlers(() => {
-        logSystem("👋 Goodbye!");
+        logSystem("👋 Goodbye! Visit " +
+            chalk.underline("https://orzchat.com") +
+            " for more", "white");
         cleanup(autoReconnect);
     });
     function initializeConnection() {
@@ -37,7 +39,7 @@ export function startChat() {
                 connected = false;
                 logSystem("❌ Partner disconnected.", "red");
                 promptReconnect();
-                break;
+                return;
             case "message":
                 logPartnerMessage(data.text);
                 break;
@@ -47,17 +49,20 @@ export function startChat() {
         renderInput();
     }
     function promptReconnect() {
-        process.stdout.write("Press Enter to start a new chat: ");
+        process.stdout.write("Press any key to start a new chat: ");
         process.stdin.once("data", (data) => {
-            const answer = data.toString().trim();
-            if (answer === "") {
-                logSystem("🔄 Starting a new chat...", "blue");
-                initializeConnection();
-            }
-            else {
-                logSystem("👋 Goodbye!", "green");
+            const key = data.toString();
+            if (key === "\u0003") {
+                // Ctrl+C
+                logSystem("👋 Goodbye! Visit " +
+                    chalk.underline("https://orzchat.com") +
+                    " for more", "green");
                 cleanup(autoReconnect);
+                return;
             }
+            // Any other key → start new chat
+            logSystem("\n\n🔄 Starting a new chat...", "blue");
+            initializeConnection();
         });
     }
     function setupInputHandlers(onExit) {
