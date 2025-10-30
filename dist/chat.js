@@ -3,7 +3,8 @@ import chalk from "chalk";
 import { connect, sendMessage, setMessageHandler, getStatus, ConnectionStatus, getSocket, disconnect, } from "./connection.js";
 export function startChat() {
     const width = process.stdout.columns;
-    const CHAT_WIDTH = Math.min(60, width - 2);
+    const MAX_CHAT_WIDTH = 45;
+    const CHAT_WIDTH = Math.min(MAX_CHAT_WIDTH, width - 2);
     let connected = false;
     let inputBuffer = "";
     initializeConnection();
@@ -30,7 +31,7 @@ export function startChat() {
                 break;
             case "matched":
                 connected = true;
-                logSystem("💚 Connected to a chat partner!\n", "green");
+                logSystem("✅ Connected to a chat partner!\n", "green");
                 break;
             case "partner_disconnected":
                 connected = false;
@@ -77,8 +78,8 @@ export function startChat() {
                 else if (message.length > 0) {
                     sendMessage({ type: "message", text: message });
                     logUserMessage(message);
+                    inputBuffer = "";
                 }
-                inputBuffer = "";
             }
             else if (key.name === "backspace") {
                 inputBuffer = inputBuffer.slice(0, -1);
