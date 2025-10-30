@@ -146,7 +146,7 @@ export function startChat() {
         clearPromptLine();
         // Pad to the right so it doesn’t collide with user input
         const paddingLength = Math.max(0, CHAT_WIDTH - text.length);
-        console.log(" ".repeat(paddingLength) + chalk.blue(text));
+        console.log(" ".repeat(paddingLength) + chalk.white(text));
     }
 
     function logPartnerMessage(text: string) {

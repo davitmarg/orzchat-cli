@@ -69,6 +69,10 @@ export function sendMessage(payload) {
         socket.send(JSON.stringify(payload));
     }
 }
+export function isSocketOpen() {
+    const socket = getSocket();
+    return socket !== null && socket.readyState === WebSocket.OPEN;
+}
 export function disconnect() {
     if (socket) {
         socket.close();

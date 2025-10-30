@@ -1,6 +1,6 @@
 import readline from "readline";
 import chalk from "chalk";
-import { connect, sendMessage, setMessageHandler, getStatus, ConnectionStatus, getSocket, disconnect, } from "./connection.js";
+import { connect, sendMessage, setMessageHandler, getStatus, ConnectionStatus, disconnect, isSocketOpen, } from "./connection.js";
 export function startChat() {
     const width = process.stdout.columns;
     const MAX_CHAT_WIDTH = 45;
@@ -110,8 +110,7 @@ export function startChat() {
     }
     function setupAutoReconnect(callback) {
         return setInterval(() => {
-            const socket = getSocket();
-            if (!socket || socket.readyState !== WebSocket.OPEN)
+            if (!isSocketOpen())
                 callback();
         }, 5000);
     }
@@ -129,7 +128,7 @@ export function startChat() {
         clearPromptLine();
         // Pad to the right so it doesn’t collide with user input
         const paddingLength = Math.max(0, CHAT_WIDTH - text.length);
-        console.log(" ".repeat(paddingLength) + chalk.blue(text));
+        console.log(" ".repeat(paddingLength) + chalk.white(text));
     }
     function logPartnerMessage(text) {
         clearPromptLine();
