@@ -1,6 +1,6 @@
 {
     "name": "orzchat-cli",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "type": "module",
     "bin": {
         "orzchat": "./dist/index.js"
