@@ -19,7 +19,7 @@ export function getSocket() {
 export function setMessageHandler(handler) {
     messageHandler = handler;
 }
-export function connect() {
+export function connect(roomId) {
     const url = PUBLIC_SIGNALING_SERVER_URL;
     if (socket)
         disconnect();
@@ -27,6 +27,8 @@ export function connect() {
     socket = new WebSocket(url);
     socket.onopen = () => {
         status = ConnectionStatus.WAITING;
+        // Tell the server which room we are joining right after connection opens
+        sendMessage({ type: "join", room_id: roomId });
     };
     socket.onmessage = (event) => {
         if (!messageHandler)

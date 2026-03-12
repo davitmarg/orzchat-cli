@@ -9,7 +9,7 @@ const program = new Command();
 program
     .name("orzchat")
     .description("Instant CLI chat connecting to orzchat.com")
-    .version("0.1.1")
+    .version("0.1.7")
     .argument("[room]", "Optional room ID to join")
     .action((roomArg) => {
         // Default to "/" if no argument is provided, then trim leading slashes

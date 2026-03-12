@@ -1,7 +1,7 @@
 import readline from "readline";
 import chalk from "chalk";
 import { connect, sendMessage, setMessageHandler, getStatus, ConnectionStatus, disconnect, isSocketOpen, } from "./connection.js";
-export function startChat() {
+export function startChat(roomId) {
     const width = process.stdout.columns;
     const MAX_CHAT_WIDTH = 45;
     const CHAT_WIDTH = Math.min(MAX_CHAT_WIDTH, width - 2);
@@ -21,7 +21,7 @@ export function startChat() {
         cleanup(autoReconnect);
     });
     function initializeConnection() {
-        connect();
+        connect(roomId);
         setMessageHandler(handleServerEvent);
     }
     function handleServerEvent(data) {
