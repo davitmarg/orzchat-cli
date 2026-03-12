@@ -25,7 +25,7 @@ export function setMessageHandler(handler: (data: any) => void) {
     messageHandler = handler;
 }
 
-export function connect() {
+export function connect(roomId: string) {
     const url = PUBLIC_SIGNALING_SERVER_URL;
 
     if (socket) disconnect();
@@ -35,6 +35,8 @@ export function connect() {
 
     socket.onopen = () => {
         status = ConnectionStatus.WAITING;
+        // Tell the server which room we are joining right after connection opens
+        sendMessage({ type: "join", room_id: roomId });
     };
 
     socket.onmessage = (event) => {

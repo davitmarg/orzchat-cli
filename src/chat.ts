@@ -10,7 +10,7 @@ import {
     isSocketOpen,
 } from "./connection.js";
 
-export function startChat() {
+export function startChat(roomId: string) {
     const width = process.stdout.columns;
     const MAX_CHAT_WIDTH = 45;
     const CHAT_WIDTH = Math.min(MAX_CHAT_WIDTH, width - 2);
@@ -36,7 +36,7 @@ export function startChat() {
     });
 
     function initializeConnection() {
-        connect();
+        connect(roomId);
         setMessageHandler(handleServerEvent);
     }
 
