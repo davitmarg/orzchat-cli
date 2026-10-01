@@ -1,30 +1,41 @@
 {
-    "name": "orzchat-cli",
-    "version": "0.1.7",
-    "type": "module",
-    "bin": {
-        "orzchat": "./dist/index.js"
-    },
-    "scripts": {
-        "dev": "node --loader ts-node/esm src/index.ts",
-        "build": "tsc"
-    },
-    "dependencies": {
-        "chalk": "^5.6.2",
-        "commander": "^14.0.2",
-        "dotenv": "^17.2.3",
-        "readline": "^1.3.0",
-        "ws": "^8.18.3"
-    },
-    "devDependencies": {
-        "@types/chalk": "^0.4.31",
-        "@types/node": "^24.9.2",
-        "@types/ws": "^8.18.1",
-        "ts-node": "^10.9.2",
-        "typescript": "^5.9.3"
-    },
-    "ts-node": {
-        "esm": true,
-        "transpileOnly": true
-    }
+  "name": "orzchat-cli",
+  "version": "0.2.0",
+  "type": "module",
+  "bin": {
+    "orzchat": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "node --loader ts-node/esm src/index.ts",
+    "build": "tsc",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepack": "npm test"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.2",
+    "@types/ws": "^8.18.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "ts-node": {
+    "esm": true,
+    "transpileOnly": true
+  },
+  "description": "Anonymous OrzChat conversations in your terminal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davitmarg/orzchat-cli.git"
+  },
+  "homepage": "https://orzchat.com",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
 }

@@ -6,79 +6,70 @@ export var ConnectionStatus;
     ConnectionStatus["DISCONNECTED"] = "DISCONNECTED";
     ConnectionStatus["CONNECTING"] = "CONNECTING";
 })(ConnectionStatus || (ConnectionStatus = {}));
-const PUBLIC_SIGNALING_SERVER_URL = "wss://ws.orzchat.com:443";
 let socket = null;
 let messageHandler = null;
 let status = ConnectionStatus.DISCONNECTED;
-export function getStatus() {
-    return status;
-}
-export function getSocket() {
-    return socket;
-}
+export const getStatus = () => status;
+export const getSocket = () => socket;
 export function setMessageHandler(handler) {
     messageHandler = handler;
 }
-export function connect(roomId) {
-    const url = PUBLIC_SIGNALING_SERVER_URL;
-    if (socket)
-        disconnect();
+export function connect(roomId, url = "wss://ws.orzchat.com:443") {
+    disconnect();
     status = ConnectionStatus.CONNECTING;
-    socket = new WebSocket(url);
-    socket.onopen = () => {
+    const current = new WebSocket(url, { handshakeTimeout: 10000, maxPayload: 1024 * 1024 });
+    socket = current;
+    current.on("open", () => {
+        if (socket !== current)
+            return;
         status = ConnectionStatus.WAITING;
-        // Tell the server which room we are joining right after connection opens
         sendMessage({ type: "join", room_id: roomId });
-    };
-    socket.onmessage = (event) => {
-        if (!messageHandler)
+    });
+    current.on("message", (raw) => {
+        if (socket !== current)
             return;
         let data;
-        if (typeof event.data === "string") {
-            data = JSON.parse(event.data);
+        try {
+            data = JSON.parse(raw.toString());
+            if (!data || typeof data.type !== "string")
+                return;
+            if (data.type === "message" && typeof data.text !== "string")
+                return;
+            if (data.message !== undefined && typeof data.message !== "string")
+                return;
         }
-        else if (event.data instanceof Buffer) {
-            data = JSON.parse(event.data.toString("utf-8"));
-        }
-        else if (event.data instanceof ArrayBuffer) {
-            data = JSON.parse(Buffer.from(event.data).toString("utf-8"));
-        }
-        else {
+        catch {
             return;
         }
-        switch (data.type) {
-            case "waiting":
-                status = ConnectionStatus.WAITING;
-                break;
-            case "matched":
-                status = ConnectionStatus.CONNECTED;
-                break;
-            case "partner_disconnected":
-                status = ConnectionStatus.DISCONNECTED;
-                break;
-        }
-        messageHandler(data);
-    };
-    socket.onclose = () => {
-        status = ConnectionStatus.DISCONNECTED;
-    };
-    socket.onerror = () => {
-        status = ConnectionStatus.DISCONNECTED;
-    };
-}
-export function sendMessage(payload) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(payload));
-    }
-}
-export function isSocketOpen() {
-    const socket = getSocket();
-    return socket !== null && socket.readyState === WebSocket.OPEN;
-}
-export function disconnect() {
-    if (socket) {
-        socket.close();
+        if (data.type === "waiting")
+            status = ConnectionStatus.WAITING;
+        if (data.type === "matched")
+            status = ConnectionStatus.CONNECTED;
+        if (data.type === "partner_disconnected")
+            status = ConnectionStatus.DISCONNECTED;
+        messageHandler?.(data);
+    });
+    current.on("close", () => {
+        if (socket !== current)
+            return;
         socket = null;
         status = ConnectionStatus.DISCONNECTED;
-    }
+        messageHandler?.({ type: "connection_closed" });
+    });
+    // ws emits close after an error; handle recovery once, in the close listener.
+    current.on("error", () => { });
+}
+export function sendMessage(payload) {
+    if (!socket || socket.readyState !== WebSocket.OPEN)
+        return false;
+    socket.send(JSON.stringify(payload));
+    return true;
+}
+export const isSocketOpen = () => socket?.readyState === WebSocket.OPEN;
+export function disconnect() {
+    const previous = socket;
+    socket = null;
+    status = ConnectionStatus.DISCONNECTED;
+    if (previous)
+        previous.terminate();
 }

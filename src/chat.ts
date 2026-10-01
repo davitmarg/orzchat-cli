@@ -1,175 +1,85 @@
-import readline from "readline";
+import readline from "node:readline";
 import chalk from "chalk";
-import {
-    connect,
-    sendMessage,
-    setMessageHandler,
-    getStatus,
-    ConnectionStatus,
-    disconnect,
-    isSocketOpen,
-} from "./connection.js";
+import { connect, sendMessage, setMessageHandler, getStatus, ConnectionStatus, disconnect, type ServerEvent } from "./connection.js";
+import { safeText } from "./terminal.js";
 
-export function startChat(roomId: string) {
-    const width = process.stdout.columns;
-    const MAX_CHAT_WIDTH = 45;
-    const CHAT_WIDTH = Math.min(MAX_CHAT_WIDTH, width - 2);
-    let connected = false;
-    let inputBuffer = "";
+export function startChat(roomId: string, server?: string) {
+    const output = process.stdout;
+    const terminal = Boolean(process.stdin.isTTY && output.isTTY);
+    const rl = readline.createInterface({ input: process.stdin, output, terminal, prompt: chalk.blue("You > "), historySize: 0 });
+    let closed = false;
+    let partnerLeft = false;
+    let retry: NodeJS.Timeout | undefined;
 
-    initializeConnection();
-    const autoReconnect = setupAutoReconnect(() => {
-        if (!connected && getStatus() !== ConnectionStatus.DISCONNECTED) {
-            logSystem("🔄 Reconnecting...");
-            initializeConnection();
+    function log(message: string) {
+        if (closed) return;
+        const draft = rl.line;
+        const cursor = rl.cursor;
+        if (terminal) {
+            // Clear through readline so its wrapped-row bookkeeping stays in sync.
+            rl.write(null, { ctrl: true, name: "a" });
+            rl.write(null, { ctrl: true, name: "k" });
+            readline.cursorTo(output, 0);
+            readline.clearScreenDown(output);
         }
-    });
-
-    setupInputHandlers(() => {
-        logSystem(
-            "👋 Goodbye! Visit " +
-                chalk.underline("https://orzchat.com") +
-                " for more",
-            "white"
-        );
-        cleanup(autoReconnect);
-    });
-
-    function initializeConnection() {
-        connect(roomId);
-        setMessageHandler(handleServerEvent);
+        output.write(message + "\n");
+        if (terminal) {
+            rl.prompt();
+            rl.write(draft);
+            for (const _ of draft.slice(cursor)) rl.write(null, { name: "left" });
+        }
     }
-
-    function handleServerEvent(data: any) {
-        clearPromptLine();
+    function join() {
+        clearTimeout(retry);
+        partnerLeft = false;
+        log(chalk.yellow("Connecting..."));
+        connect(roomId, server);
+    }
+    function handleServerEvent(data: ServerEvent) {
         switch (data.type) {
-            case "waiting":
-                connected = false;
-                logSystem("⏳ Waiting for a chat partner...", "yellow");
-                break;
-            case "matched":
-                connected = true;
-                logSystem("✅ Connected to a chat partner!\n", "green");
-
-                break;
+            case "waiting": log(chalk.yellow("Waiting for a chat partner...")); break;
+            case "matched": log(chalk.green("Connected to a chat partner!")); break;
             case "partner_disconnected":
-                connected = false;
-                logSystem("❌ Partner disconnected.", "red");
-                promptReconnect();
-                return;
-            case "message":
-                logPartnerMessage(data.text);
+                partnerLeft = true;
+                log(chalk.yellow("Partner disconnected. Press Enter or use /next to start a new chat."));
                 break;
-            default:
-                logSystem(`⚠️ Unknown message type: ${data.type}`, "gray");
-        }
-        renderInput();
-    }
-
-    function promptReconnect() {
-        process.stdout.write("Press any key to start a new chat: ");
-        process.stdin.once("data", (data) => {
-            const key = data.toString();
-            if (key === "\u0003") {
-                // Ctrl+C
-                logSystem(
-                    "👋 Goodbye! Visit " +
-                        chalk.underline("https://orzchat.com") +
-                        " for more",
-                    "green"
-                );
-                cleanup(autoReconnect);
-                return;
-            }
-
-            // Any other key → start new chat
-            logSystem("\n\n🔄 Starting a new chat...", "blue");
-            initializeConnection();
-        });
-    }
-
-    function setupInputHandlers(onExit: () => void) {
-        readline.emitKeypressEvents(process.stdin);
-        process.stdin.setRawMode(true);
-
-        process.stdin.on("keypress", (str, key) => {
-            if (key.sequence === "\r") {
-                const message = inputBuffer.trim();
-                if (message.toLowerCase() === "/exit") {
-                    onExit();
-                    return;
+            case "connection_closed":
+                if (!partnerLeft) {
+                    log(chalk.yellow("Connection lost. Retrying in 5 seconds... (/next to retry now)"));
+                    retry = setTimeout(join, 5000);
                 }
-                if (!connected) {
-                    if (message.length > 0) {
-                        logSystem("⚠️ Not connected yet!", "red");
-                    }
-                } else if (message.length > 0) {
-                    sendMessage({ type: "message", text: message });
-                    logUserMessage(message);
-                    inputBuffer = "";
-                }
-            } else if (key.name === "backspace") {
-                inputBuffer = inputBuffer.slice(0, -1);
-            } else if (!key.ctrl && !key.meta && key.sequence) {
-                inputBuffer += key.sequence;
-            } else if (key.ctrl && key.name === "c") {
-                logSystem("\n👋 Exiting...", "green");
-                onExit();
-                return;
-            }
-
-            renderInput();
-        });
-
-        renderInput();
-    }
-
-    function renderInput() {
-        clearPromptLine();
-        if (inputBuffer.length === 0) {
-            const placeholder = "Type here...";
-            process.stdout.write(chalk.blue("> ") + chalk.gray(placeholder));
-            readline.cursorTo(process.stdout, 2); // cursor at start
-        } else {
-            process.stdout.write(chalk.blue("> ") + chalk.white(inputBuffer));
-            readline.cursorTo(process.stdout, inputBuffer.length + 2);
+                break;
+            case "message": log(chalk.cyan("Partner > " + safeText(data.text!))); break;
+            case "error": log(chalk.red(safeText(data.message ?? "The server reported an error."))); break;
         }
     }
-
-    function setupAutoReconnect(callback: () => void) {
-        return setInterval(() => {
-            if (!isSocketOpen()) callback();
-        }, 5000);
-    }
-
-    function cleanup(interval: NodeJS.Timeout) {
-        clearInterval(interval);
+    rl.on("line", (line) => {
+        if (closed) return;
+        const text = safeText(line).trim();
+        if (text === "/exit" || text === "/quit") { rl.close(); return; }
+        if (text === "/next" || (!text && partnerLeft)) { join(); return; }
+        if (text === "/help") { log("Commands: /next — new partner, /help — help, /exit — quit. Ctrl+C or Ctrl+D also exits."); return; }
+        if (text.startsWith("/")) { log(chalk.yellow("Unknown command. Type /help for available commands.")); return; }
+        if (text) {
+            if (getStatus() !== ConnectionStatus.CONNECTED || !sendMessage({ type: "message", text })) {
+                log(chalk.yellow("Message not sent: no partner is connected. Use /next to find one."));
+                return;
+            }
+        }
+        if (terminal) rl.prompt();
+    });
+    const onSignal = () => rl.close();
+    rl.on("SIGINT", onSignal);
+    process.once("SIGTERM", onSignal);
+    rl.once("close", () => {
+        closed = true;
+        clearTimeout(retry);
+        setMessageHandler(null);
         disconnect();
-        process.exit(0);
-    }
-
-    function logSystem(message: string, color: string = "white") {
-        clearPromptLine();
-        console.log((chalk as any)[color](message));
-        renderInput();
-    }
-
-    function logUserMessage(text: string) {
-        clearPromptLine();
-        // Pad to the right so it doesn’t collide with user input
-        const paddingLength = Math.max(0, CHAT_WIDTH - text.length);
-        console.log(" ".repeat(paddingLength) + chalk.white(text));
-    }
-
-    function logPartnerMessage(text: string) {
-        clearPromptLine();
-        const label = "💬";
-        const line = label + " " + text;
-        console.log(chalk.cyan(text));
-    }
-
-    function clearPromptLine() {
-        readline.clearLine(process.stdout, 0);
-        readline.cursorTo(process.stdout, 0);
-    }
+        process.removeListener("SIGTERM", onSignal);
+        output.write("\nGoodbye! Visit https://orzchat.com for more.\n");
+    });
+    setMessageHandler(handleServerEvent);
+    log("Type /help for commands. Use /next to find a new partner.");
+    join();
 }
