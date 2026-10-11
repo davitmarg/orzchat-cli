@@ -28,8 +28,7 @@ program.name("orzchat")
         return;
     }
     const room = safeText(roomArg).trim().replace(/^\/+/, "");
-    console.log(chalk.green.bold(`\nOrzChat ${version}`));
-    console.log(`https://orzchat.com | Room: ${room || "default"}\n`);
+    printStartMessage(room);
     if (options.updateCheck && !process.env.ORZCHAT_NO_UPDATE_CHECK) {
         const notice = await checkForUpdate(version);
         if (notice)
@@ -37,4 +36,19 @@ program.name("orzchat")
     }
     startChat(room, options.server);
 });
+function printStartMessage(room) {
+    const message = `                                                        
+  ▄▄▄▄                         ▄▄▄  █               ▄   
+ ▄▀  ▀▄  ▄ ▄▄  ▄▄▄▄▄         ▄▀   ▀ █ ▄▄    ▄▄▄   ▄▄█▄▄ 
+ █    █  █▀  ▀    ▄▀         █      █▀  █  ▀   █    █   
+ █    █  █      ▄▀           █      █   █  ▄▀▀▀█    █   
+  █▄▄█   █     █▄▄▄▄          ▀▄▄▄▀ █   █  ▀▄▄▀█    ▀▄▄ 
+                                                        
+                                                        `;
+    console.log(chalk.green(message));
+    const displayRoom = room === "" ? "default" : room;
+    console.log(chalk.gray("Powered by ") +
+        chalk.blue.underline("https://orzchat.com") +
+        chalk.gray(` | speak to a random stranger in room: ${displayRoom}\n`));
+}
 await program.parseAsync();
