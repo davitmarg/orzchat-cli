@@ -6,7 +6,7 @@ import { safeText } from "./terminal.js";
 export function startChat(roomId: string, server?: string) {
     const output = process.stdout;
     const terminal = Boolean(process.stdin.isTTY && output.isTTY);
-    const rl = readline.createInterface({ input: process.stdin, output, terminal, prompt: chalk.blue("You > "), historySize: 0 });
+    const rl = readline.createInterface({ input: process.stdin, output, terminal, prompt: chalk.blue("> "), historySize: 0 });
     let closed = false;
     let partnerLeft = false;
     let retry: NodeJS.Timeout | undefined;
@@ -29,6 +29,18 @@ export function startChat(roomId: string, server?: string) {
             for (const _ of draft.slice(cursor)) rl.write(null, { name: "left" });
         }
     }
+    function logUserMessage(text: string) {
+        const width = output.columns || 80;
+        const chatWidth = Math.min(45, width - 2);
+        const paddingLength = Math.max(0, chatWidth - text.length);
+        if (terminal) {
+            const promptLen = 2; // "> "
+            const rows = Math.max(1, Math.ceil((promptLen + text.length) / width));
+            readline.moveCursor(output, 0, -rows);
+            readline.clearScreenDown(output);
+        }
+        output.write(" ".repeat(paddingLength) + chalk.white(text) + "\n");
+    }
     function join() {
         clearTimeout(retry);
         partnerLeft = false;
@@ -49,7 +61,7 @@ export function startChat(roomId: string, server?: string) {
                     retry = setTimeout(join, 5000);
                 }
                 break;
-            case "message": log(chalk.cyan("Partner > " + safeText(data.text!))); break;
+            case "message": log(chalk.cyan(safeText(data.text!))); break;
             case "error": log(chalk.red(safeText(data.message ?? "The server reported an error."))); break;
         }
     }
@@ -65,6 +77,7 @@ export function startChat(roomId: string, server?: string) {
                 log(chalk.yellow("Message not sent: no partner is connected. Use /next to find one."));
                 return;
             }
+            logUserMessage(text);
         }
         if (terminal) rl.prompt();
     });

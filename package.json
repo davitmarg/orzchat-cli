@@ -1,9 +1,9 @@
 {
   "name": "orzchat-cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "bin": {
-    "orzchat": "./dist/index.js"
+    "orzchat": "dist/index.js"
   },
   "scripts": {
     "dev": "node --loader ts-node/esm src/index.ts",

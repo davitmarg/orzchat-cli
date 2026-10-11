@@ -72,6 +72,9 @@ try:
     assert transcript.count(b'Goodbye!') == 1
     assert b'\x1b[1A' in transcript or b'\x1b[2A' in transcript
     print('PASS: narrow terminal, Unicode draft, arrow editing, incoming message, /help, /next, automatic reconnect, partner departure, Ctrl+C')
+except Exception:
+    print('TRANSCRIPT AT FAILURE:\n' + transcript.decode('utf-8', 'replace'))
+    raise
 finally:
     if child.poll() is None: child.kill()
     server.terminate()
